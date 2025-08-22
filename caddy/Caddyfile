@@ -2,6 +2,7 @@
   log {
     output stdout
     format console
+    level INFO
   }
 
   @health { path /health }
