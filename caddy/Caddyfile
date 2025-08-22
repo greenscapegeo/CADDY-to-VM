@@ -1,0 +1,19 @@
+:80 {
+  log {
+    output stdout
+    format console
+  }
+
+  @health { path /health }
+  respond @health "OK" 200
+
+  import /etc/caddy/conf.d/*.caddy
+
+  encode gzip zstd
+  header {
+    -Server
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy strict-origin-when-cross-origin
+  }
+}
