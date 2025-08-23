@@ -22,10 +22,10 @@ jobs:
           host: "35.225.153.97"
           username: "borissolomonia"
           key: ${{ secrets.VM_SSH_KEY }}
-          source: "infra/caddy/*"
+          source: "caddy/*"
           target: "/opt/apps/caddy"
           overwrite: true
-          strip_components: 2
+          strip_components: 1
 
       - name: Bring up Caddy and reload
         uses: appleboy/ssh-action@v1.0.3
