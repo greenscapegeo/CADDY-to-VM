@@ -7,189 +7,103 @@ on:
       - 'infra/caddy/**'
   workflow_dispatch: {}
 
-# Cancel older runs of the same workflow on the same ref
-concurrency:
-  group: deploy-caddy-${{ github.ref }}
-  cancel-in-progress: true
-
-# Least-privileged default
-permissions:
-  contents: read
-
-defaults:
-  run:
-    shell: bash
-
-# Pull values from GitHub → Settings → Secrets and variables → Actions
-# - Variables: VM_HOST (e.g., 35.225.x.x), VM_SSH_USER (e.g., borissolomonia)
-# - Secrets:   VM_SSH_KEY (your private SSH key, multiline)
-env:
-  VM_HOST: ${{ vars.VM_HOST }}
-  VM_SSH_USER: ${{ vars.VM_SSH_USER }}
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     steps:
-      - name: ⬇️ Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 🔎 Guard: verify required vars/secrets exist
+      # Verify required inputs exist (prints friendly errors)
+      - name: Guard variables and secrets
+        env:
+          VM_HOST: ${{ vars.VM_HOST }}
+          VM_SSH_USER: ${{ vars.VM_SSH_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
         run: |
-          echo "::group::Inputs check"
-          missing=0
-          if [ -z "${{ env.VM_HOST }}" ]; then echo "::error::Missing repo variable: VM_HOST"; missing=1; fi
-          if [ -z "${{ env.VM_SSH_USER }}" ]; then echo "::error::Missing repo variable: VM_SSH_USER"; missing=1; fi
-          if [ -z "${{ secrets.VM_SSH_KEY }}" ]; then echo "::error::Missing repo secret: VM_SSH_KEY"; missing=1; fi
-          if [ $missing -ne 0 ]; then
-            echo "Required inputs are missing. Aborting."; exit 1
-          fi
-          echo "VM_HOST: ${{ env.VM_HOST }}"
-          echo "VM_SSH_USER: ${{ env.VM_SSH_USER }}"
-          echo "::endgroup::"
+          set -e
+          [ -n "$VM_HOST" ] || { echo "::error::Missing repo variable VM_HOST"; exit 1; }
+          [ -n "$VM_SSH_USER" ] || { echo "::error::Missing repo variable VM_SSH_USER"; exit 1; }
+          [ -n "$VM_SSH_KEY" ] || { echo "::error::Missing repo secret VM_SSH_KEY"; exit 1; }
+          echo "Using VM_HOST=$VM_HOST"
+          echo "Using VM_SSH_USER=$VM_SSH_USER"
 
-      - name: 🧰 Prep: add host key (avoid interactive SSH prompt)
+      # Avoid interactive host-key prompt
+      - name: Add host key
         run: |
-          echo "::group::Known hosts"
           mkdir -p ~/.ssh
-          ssh-keyscan -H "${{ env.VM_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
-          echo "Known hosts now contains:"
-          wc -l ~/.ssh/known_hosts || true
-          echo "::endgroup::"
+          ssh-keyscan -H "${{ vars.VM_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          echo "Known hosts updated."
 
-      - name: 🗺️ Show what we’re about to deploy
-        run: |
-          echo "::group::Tree infra/caddy"
-          if [ -d infra/caddy ]; then
-            ls -la infra/caddy || true
-            echo
-            echo "File list:"
-            find infra/caddy -maxdepth 2 -type f -print | sort
-          else
-            echo "::error::Directory infra/caddy does not exist."
-            exit 1
-          fi
-          echo "::endgroup::"
-
-      - name: 📤 Copy caddy files to VM (SCP)
+      # Copy only the contents of infra/caddy/ into ~/caddy on the VM
+      - name: Copy Caddy files (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
-          host:     ${{ env.VM_HOST }}
-          username: ${{ env.VM_SSH_USER }}
-          key:      ${{ secrets.VM_SSH_KEY }}
+          host: ${{ vars.VM_HOST }}
+          username: ${{ vars.VM_SSH_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
           port: 22
-          # We want only the contents of infra/caddy/ in the target dir,
-          # not the leading "infra/caddy" folders. Use strip_components: 2.
-          source: "infra/caddy/*"
-          target: "/home/${{ env.VM_SSH_USER }}/caddy"
+          source: infra/caddy/*
+          target: /home/${{ vars.VM_SSH_USER }}/caddy
           overwrite: true
           strip_components: 2
           timeout: 30s
           command_timeout: 10m
-          debug: true
 
-      - name: 🔐 Remote prep (create target dir, fix perms, list contents)
+      # Validate Caddyfile before touching running services
+      - name: Validate Caddyfile
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host:     ${{ env.VM_HOST }}
-          username: ${{ env.VM_SSH_USER }}
-          key:      ${{ secrets.VM_SSH_KEY }}
-          script_stop: true
+          host: ${{ vars.VM_HOST }}
+          username: ${{ vars.VM_SSH_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
           script: |
-            set -euo pipefail
-            echo "==> Ensuring target dir exists and is owned by ${USER}"
-            TARGET_DIR="/home/${USER}/caddy"
-            mkdir -p "$TARGET_DIR"
-            chmod 755 "$TARGET_DIR"
-            echo "==> Listing target dir:"
-            ls -la "$TARGET_DIR"
-
-      - name: ✅ Validate Caddyfile (before touching running services)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host:     ${{ env.VM_HOST }}
-          username: ${{ env.VM_SSH_USER }}
-          key:      ${{ secrets.VM_SSH_KEY }}
-          script_stop: true
-          script: |
-            set -euo pipefail
-            TARGET_DIR="/home/${USER}/caddy"
-            CONFIG="${TARGET_DIR}/Caddyfile"
-            if [ ! -f "$CONFIG" ]; then
-              echo "Caddyfile not found at $CONFIG"
-              ls -la "$TARGET_DIR" || true
-              exit 1
-            fi
-            echo "==> Validating Caddyfile at $CONFIG"
-            docker run --rm -v "$CONFIG:/etc/caddy/Caddyfile:ro" caddy:2 \
+            set -e
+            TARGET_DIR="/home/${{ vars.VM_SSH_USER }}/caddy"
+            echo "Listing $TARGET_DIR"
+            ls -la "$TARGET_DIR" || true
+            [ -f "$TARGET_DIR/Caddyfile" ] || { echo "Caddyfile missing at $TARGET_DIR/Caddyfile"; exit 1; }
+            echo "Validating Caddyfile..."
+            docker run --rm -v "$TARGET_DIR/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2 \
               caddy validate --config /etc/caddy/Caddyfile
             echo "Caddyfile validation OK."
 
-      - name: 🧩 Bring up Caddy with docker compose
+      # Start/Reload Caddy with docker compose, print status and logs
+      - name: Start or reload Caddy
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host:     ${{ env.VM_HOST }}
-          username: ${{ env.VM_SSH_USER }}
-          key:      ${{ secrets.VM_SSH_KEY }}
-          script_stop: true
+          host: ${{ vars.VM_HOST }}
+          username: ${{ vars.VM_SSH_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
           script: |
-            set -euo pipefail
-            TARGET_DIR="/home/${USER}/caddy"
-            echo "==> Ensuring docker & compose are available"
+            set -e
+            TARGET_DIR="/home/${{ vars.VM_SSH_USER }}/caddy"
+
+            echo "Docker versions:"
             docker --version
             docker compose version
 
-            echo "==> Creating docker network 'web' (idempotent)"
+            echo "Ensuring docker network 'web' exists"
             docker network create web 2>/dev/null || true
 
-            echo "==> Starting (or updating) Caddy stack"
+            echo "Bringing up Caddy stack"
             cd "$TARGET_DIR"
             docker compose up -d
 
-            echo "==> Current compose services"
+            echo "Compose services:"
             docker compose ps
 
-      - name: 📜 Tail Caddy logs (last 200 lines)
-        uses: appleboy/ssh-action@v1.0.3
-        if: always()
-        with:
-          host:     ${{ env.VM_HOST }}
-          username: ${{ env.VM_SSH_USER }}
-          key:      ${{ secrets.VM_SSH_KEY }}
-          script_stop: false
-          script: |
-            set -euo pipefail
-            TARGET_DIR="/home/${USER}/caddy"
-            cd "$TARGET_DIR"
-            echo "==> Recent logs from 'caddy' service"
-            docker compose logs --tail=200 caddy || true
+            echo "Reloading Caddy (non-fatal if not already running)"
+            docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile || true
 
-      - name: 🩺 Health checks (HTTP/HTTPS local)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host:     ${{ env.VM_HOST }}
-          username: ${{ env.VM_SSH_USER }}
-          key:      ${{ secrets.VM_SSH_KEY }}
-          script_stop: false
-          script: |
-            set -euo pipefail
-            echo "==> HTTP check"
-            set +e
-            curl -I --max-time 10 http://127.0.0.1/ || EXIT1=$?
-            echo "==> HTTPS check (ignoring cert since hostname is 127.0.0.1)"
-            curl -I --max-time 10 -k https://127.0.0.1/ || EXIT2=$?
-            if [ "${EXIT1:-0}" -ne 0 ] || [ "${EXIT2:-0}" -ne 0 ]; then
-              echo "One or more health checks failed. See Caddy logs above."
-              exit 1
-            fi
-            echo "Local health checks OK."
+            echo "Recent Caddy logs:"
+            docker compose logs --tail=100 caddy || true
 
-      - name: ✅ Done
-        run: echo "Deployment finished successfully."
-
-
+            echo "Local health checks:"
+            curl -I --max-time 10 http://127.0.0.1/ || true
+            curl -I -k --max-time 10 https://127.0.0.1/ || true
+            echo "Done."
 
 
 
