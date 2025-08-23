@@ -6,8 +6,9 @@ on:
     branches: [ master ]
   workflow_dispatch: {}
 
+# Pull from GitHub → Settings → Secrets and variables → Actions
 env:
-  VM_HOST:     ${{ vars.VM_HOST }}       # 35.225.153.97
+  VM_HOST:     ${{ vars.VM_HOST }}       # e.g. 35.225.153.97
   VM_SSH_USER: ${{ vars.VM_SSH_USER }}   # e.g. borissolomonia
 
 jobs:
@@ -16,31 +17,98 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Fail early if anything is missing
+      - name: Guard: required vars/secrets present
+        run: |
+          [ -n "${{ env.VM_HOST }}" ] || { echo "::error::Missing vars.VM_HOST"; exit 1; }
+          [ -n "${{ env.VM_SSH_USER }}" ] || { echo "::error::Missing vars.VM_SSH_USER"; exit 1; }
+          [ -n "${{ secrets.VM_SSH_KEY }}" ] || { echo "::error::Missing secrets.VM_SSH_KEY"; exit 1; }
+
+      # Avoid host key prompts
+      - name: Add host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ env.VM_HOST }}" >> ~/.ssh/known_hosts
+
       - name: Copy caddy files
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: "35.225.153.97"
-          username: "borissolomonia"
-          key: ${{ secrets.VM_SSH_KEY }}
-          source: "caddy/*"
-          target: "~/caddy"
+          host:     ${{ env.VM_HOST }}
+          username: ${{ env.VM_SSH_USER }}
+          key:      ${{ secrets.VM_SSH_KEY }}
+          # You were pushing "caddy/*" but your trigger path is infra/caddy/**
+          source: "infra/caddy/*"
+          # Prefer an absolute path; ~ expansion can be finicky inside actions containers
+          target: "/home/${{ env.VM_SSH_USER }}/caddy"
           overwrite: true
           strip_components: 1
 
       - name: Bring up Caddy and reload
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: "35.225.153.97"
-          username: "borissolomonia"
-          key: ${{secrets.VM_SSH_KEY}}
+          host:     ${{ env.VM_HOST }}
+          username: ${{ env.VM_SSH_USER }}
+          key:      ${{ secrets.VM_SSH_KEY }}
           script: |
             set -euo pipefail
             sudo docker network create web 2>/dev/null || true
-            cd ~/caddy
+            cd /home/${USER}/caddy
             sudo docker compose up -d
-            # wait for caddy to start
             sleep 5
-            # if already running, just reload config
             sudo docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile || true
-            # test health endpoint
             curl -fsS http://127.0.0.1/health || echo "Health check failed, but deployment completed"
+
+
+
+
+
+
+
+
+
+# name: deploy-caddy
+# on:
+#   push:
+#     paths:
+#       - 'infra/caddy/**'
+#     branches: [ master ]
+#   workflow_dispatch: {}
+
+# env:
+#   VM_HOST:     ${{ vars.VM_HOST }}       # 35.225.153.97
+#   VM_SSH_USER: ${{ vars.VM_SSH_USER }}   # e.g. borissolomonia
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - name: Copy caddy files
+#         uses: appleboy/scp-action@v0.1.7
+#         with:
+#           host: "35.225.153.97"
+#           username: "borissolomonia"
+#           key: ${{ secrets.VM_SSH_KEY }}
+#           source: "caddy/*"
+#           target: "~/caddy"
+#           overwrite: true
+#           strip_components: 1
+
+#       - name: Bring up Caddy and reload
+#         uses: appleboy/ssh-action@v1.0.3
+#         with:
+#           host: "35.225.153.97"
+#           username: "borissolomonia"
+#           key: ${{secrets.VM_SSH_KEY}}
+#           script: |
+#             set -euo pipefail
+#             sudo docker network create web 2>/dev/null || true
+#             cd ~/caddy
+#             sudo docker compose up -d
+#             # wait for caddy to start
+#             sleep 5
+#             # if already running, just reload config
+#             sudo docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile || true
+#             # test health endpoint
+#             curl -fsS http://127.0.0.1/health || echo "Health check failed, but deployment completed"
