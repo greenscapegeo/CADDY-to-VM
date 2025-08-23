@@ -23,7 +23,7 @@ jobs:
           username: "borissolomonia"
           key: ${{ secrets.VM_SSH_KEY }}
           source: "caddy/*"
-          target: "/opt/apps/caddy"
+          target: "~/caddy"
           overwrite: true
           strip_components: 1
 
@@ -36,7 +36,7 @@ jobs:
           script: |
             set -euo pipefail
             sudo docker network create web 2>/dev/null || true
-            cd /opt/apps/caddy
+            cd ~/caddy
             sudo docker compose up -d
             # if already running, just reload config
             sudo docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile || true
