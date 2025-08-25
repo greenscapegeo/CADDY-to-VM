@@ -10,7 +10,7 @@ on:
 env:
   VM_HOST:     ${{ secrets.VM_HOST }}        # 35.225.153.97
   VM_SSH_USER: ${{ secrets.VM_SSH_USER }}    # borissolomonia
-  
+  VM_PATH:     "/home/borissolomonia/caddy"
 
 jobs:
   deploy:
@@ -38,7 +38,7 @@ jobs:
           script: |
             set -euo pipefail
             docker network create web 2>/dev/null || true
-            cd "${{ secrets.VM_PATH }}"
+            cd "/home/borissolomonia/caddy"
             docker compose up -d
             docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile || true
             curl -fsS http://127.0.0.1/health
