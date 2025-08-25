@@ -10,7 +10,7 @@ on:
 env:
   VM_HOST:     ${{ secrets.VM_HOST }}        # 35.225.153.97
   VM_SSH_USER: ${{ secrets.VM_SSH_USER }}    # borissolomonia
-  VM_PATH:     "/home/borissolomonia/caddy"  # or /opt/apps/caddy if you move it
+  
 
 jobs:
   deploy:
@@ -24,8 +24,8 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_SSH_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          source: "infra/caddy/*"
-          target: "${{ secrets.VM_PATH }}"
+          source: "caddy/*"
+          target: "~/caddy"
           overwrite: true
           strip_components: 2
 
