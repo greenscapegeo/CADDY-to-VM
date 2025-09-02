@@ -5,43 +5,18 @@
       level DEBUG
     }
 
-    # Log all requests in detail
-    log {
-      output stdout
-      format single_field common_log
-    }
-
     encode gzip zstd
 
     @health path /health
     respond @health "OK" 200
 
-    # API routes with logging
+    # Use IP address instead of hostname to fix DNS resolution
     handle_path /api/* {
-      log {
-        output stdout
-        format console
-      }
-      reverse_proxy http://nine-tones-app:3005 {
-        header_up Host {http.request.host}
-        header_up X-Real-IP {http.request.remote}
-        header_up X-Forwarded-For {http.request.remote}
-        header_up X-Forwarded-Proto {http.request.scheme}
-      }
+      reverse_proxy http://172.18.0.5:3005
     }
 
-    # Frontend routes with logging  
     handle {
-      log {
-        output stdout
-        format console
-      }
-      reverse_proxy http://nine-tones-app:3004 {
-        header_up Host {http.request.host}
-        header_up X-Real-IP {http.request.remote}
-        header_up X-Forwarded-For {http.request.remote}
-        header_up X-Forwarded-Proto {http.request.scheme}
-      }
+      reverse_proxy http://172.18.0.5:3004
     }
 
     header {
@@ -51,27 +26,3 @@
       Referrer-Policy "strict-origin-when-cross-origin"
     }
   }
-
-
-# :80 {
-#   log {
-#     output stdout
-#     format console
-#     level INFO
-#   }
-
-#   # simple health for the LB / you
-#   @health path /health
-#   respond @health "OK" 200
-
-#   # bring in per-app routes
-#   import /etc/caddy/conf.d/*.caddy
-
-#   encode gzip zstd
-#   header {
-#     -Server
-#     X-Content-Type-Options nosniff
-#     X-Frame-Options DENY
-#     Referrer-Policy "strict-origin-when-cross-origin"
-#   }
-# }
