@@ -1,19 +1,8 @@
-# --- Tasty ERP (UI on :3004, API on :3005) ---
-# Change 'nine-tones-app' to your container name or network alias if different.
-
-# ERP under a prefix (nice if you host multiple apps behind one IP)
 handle_path /erp/api/* {
+  uri strip_prefix /erp/api
   reverse_proxy nine-tones-app:3005
 }
-
 handle_path /erp/* {
+  uri strip_prefix /erp
   reverse_proxy nine-tones-app:3004
 }
-
-# Optional short paths at root (uncomment if you want /api and / to hit ERP)
-# handle_path /api/* {
-#   reverse_proxy nine-tones-app:3005
-# }
-# handle {
-#   reverse_proxy nine-tones-app:3004
-# }

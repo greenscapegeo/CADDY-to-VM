@@ -1,7 +1,0 @@
-# app1 at / and /api/*
-route {
-  reverse_proxy app1:3000
-}
-handle_path /api/* {
-  reverse_proxy app1:3001
-}
