@@ -7,24 +7,20 @@
 
   encode gzip zstd
 
-  # API -> ERP backend on 3005
+  # Simple health for Caddy itself
+  @health path /health
+  respond @health "OK" 200
+
+  # ERP API -> container port 3005
   handle_path /api/* {
-    uri strip_prefix /api
-		reverse_proxy http://nine-tones-app:3005
+    reverse_proxy http://nine-tones-app:3005
   }
 
+  # ERP UI -> container port 3004 (catch-all)
   handle {
     reverse_proxy http://nine-tones-app:3004
   }
 
-  @health {
-    path /health
-  }
-  respond @health "OK" 200
-
-  # import /etc/caddy/conf.d/*.caddy
-
-  encode gzip zstd
   header {
     -Server
     X-Content-Type-Options nosniff
@@ -32,4 +28,3 @@
     Referrer-Policy "strict-origin-when-cross-origin"
   }
 }
-
