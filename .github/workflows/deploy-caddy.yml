@@ -1,4 +1,5 @@
-name: deploy-caddy
+  name: deploy-caddy
+
   on:
     push:
       branches: [ master ]
@@ -36,6 +37,20 @@ name: deploy-caddy
               set -euo pipefail
               cd ~/caddy
 
+              # Ensure network exists
+              docker network create web 2>/dev/null || true
+
+              # Stop and remove existing Caddy
+              docker compose down caddy 2>/dev/null || true
+
+              # Start new Caddy
+              docker compose up -d caddy
+
+              # Wait and test
+              sleep 5
+              curl -f http://localhost/health || echo "Health check failed"
+
+              echo "✅ Caddy deployment completed"
 
 # # .github/workflows/deploy-caddy.yml  (infra repo)
 # name: deploy-caddy
