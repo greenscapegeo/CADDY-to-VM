@@ -9,7 +9,12 @@
 
   # API -> ERP backend on 3005
   handle_path /api/* {
-    reverse_proxy http://nine-tones-app:3005
+    uri strip_prefix /api
+		reverse_proxy http://nine-tones-app:3005
+  }
+
+  handle {
+    reverse_proxy http://nine-tones-app:3004
   }
 
   @health {
@@ -17,11 +22,7 @@
   }
   respond @health "OK" 200
 
-  handle {
-    reverse_proxy http://nine-tones-app:3004
-  }
-
-  import /etc/caddy/conf.d/*.caddy
+  # import /etc/caddy/conf.d/*.caddy
 
   encode gzip zstd
   header {
