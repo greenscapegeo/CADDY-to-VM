@@ -5,10 +5,21 @@
     level INFO
   }
 
+  encode gzip zstd
+
+  # API -> ERP backend on 3005
+  handle_path /api/* {
+    reverse_proxy http://nine-tones-app:3005
+  }
+
   @health {
     path /health
   }
   respond @health "OK" 200
+
+  handle {
+    reverse_proxy http://nine-tones-app:3004
+  }
 
   import /etc/caddy/conf.d/*.caddy
 
