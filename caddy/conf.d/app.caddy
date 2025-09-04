@@ -1,0 +1,7 @@
+handle_path /api/* {
+    reverse_proxy http://172.18.0.5:3005
+  }
+
+  handle {
+    reverse_proxy http://172.18.0.5:3004
+  }
