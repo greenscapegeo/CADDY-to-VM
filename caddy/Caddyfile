@@ -7,8 +7,8 @@ borissolomonia.com {
 
       encode gzip zstd
 
-      # Portfolio app
-      reverse_proxy http://172.18.0.5:8090
+      # Portfolio app - CORRECTED IP AND PORT
+      reverse_proxy http://172.18.0.8:80
 
       header {
         -Server
@@ -46,7 +46,6 @@ borissolomonia.com {
         Referrer-Policy "strict-origin-when-cross-origin"
       }
   }
-
 
 # :80 {
 #     log {
