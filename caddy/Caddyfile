@@ -1,37 +1,51 @@
-borissolomonia.com, www.borissolomonia.com {
-  log {
-    output stdout
-    format console
-    level DEBUG
+borissolomonia.com {
+      log {
+        output stdout
+        format console
+        level DEBUG
+      }
+
+      encode gzip zstd
+
+      # Portfolio app
+      reverse_proxy http://172.18.0.5:8090
+
+      header {
+        -Server
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy "strict-origin-when-cross-origin"
+      }
   }
 
-    encode gzip zstd
+  # Your existing config for port 80
+  :80 {
+      log {
+        output stdout
+        format console
+        level DEBUG
+      }
 
-    # Portfolio app (main domain)
-    reverse_proxy http://172.18.0.5:8090
+      encode gzip zstd
 
-  header {
-    -Server
-    X-Content-Type-Options nosniff
-    X-Frame-Options DENY
-    Referrer-Policy "strict-origin-when-cross-origin"
+      @health path /health
+      respond @health "OK" 200
+
+      handle_path /api/* {
+        reverse_proxy http://172.18.0.5:3005
+      }
+
+      handle {
+        reverse_proxy http://172.18.0.5:3004
+      }
+
+      header {
+        -Server
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy "strict-origin-when-cross-origin"
+      }
   }
-}
-
-  # Keep existing apps on port 80 for internal access
-:80 {
-  @health path /health
-  respond @health "OK" 200
-
-  handle_path /api/* {
-    reverse_proxy http://172.18.0.5:3005
-  }
-
-  handle {
-    reverse_proxy http://172.18.0.5:3004
-  }
-}
-
 
 
 # :80 {
