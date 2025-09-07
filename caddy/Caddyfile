@@ -1,70 +1,100 @@
 borissolomonia.com {
-      log {
-        output stdout
-        format console
-        level DEBUG
-      }
-
-      encode gzip zstd
-
-      # Portfolio app - CORRECTED IP AND PORT
-      reverse_proxy http://172.18.0.8:80
-
-      header {
-        -Server
-        X-Content-Type-Options nosniff
-        X-Frame-Options DENY
-        Referrer-Policy "strict-origin-when-cross-origin"
-      }
+  log {
+    output stdout
+    format console
+    level DEBUG
   }
 
-  # Your existing config for port 80
-  :80 {
-      log {
-        output stdout
-        format console
-        level DEBUG
-      }
+  encode gzip zstd
 
-      encode gzip zstd
+  # Portfolio app (served directly by the container on port 80)
+  reverse_proxy portfolio-boris-app:80
 
-      @health path /health
-      respond @health "OK" 200
+  header {
+    -Server
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+}
 
-      handle /api/* {
-        reverse_proxy http://172.18.0.5:3005
-      }
-
-      handle {
-        reverse_proxy http://172.18.0.5:3004
-      }
-
-      header {
-        -Server
-        X-Content-Type-Options nosniff
-        X-Frame-Options DENY
-        Referrer-Policy "strict-origin-when-cross-origin"
-      }
+:80 {
+  log {
+    output stdout
+    format console
+    level DEBUG
   }
 
-# :80 {
-#     log {
-#       output stdout
-#       format console
-#       level DEBUG
-#     }
+  encode gzip zstd
 
-#     @health path /health
-#     respond @health "OK" 200
+  @health path /health
+  respond @health "OK" 200
 
-#     # Import app-specific routes
-#     import /etc/caddy/conf.d/*.caddy
+  # API -> ERP backend on 3005
+  handle /api/* {
+    reverse_proxy nine-tones-app:3005
+  }
 
-#     encode gzip zstd
-#     header {
-#       -Server
-#       X-Content-Type-Options nosniff
-#       X-Frame-Options DENY
-#       Referrer-Policy "strict-origin-when-cross-origin"
-#     }
+  # UI -> ERP frontend on 3004
+  handle {
+    reverse_proxy nine-tones-app:3004
+  }
+
+  header {
+    -Server
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+}
+
+
+
+# borissolomonia.com {
+#       log {
+#         output stdout
+#         format console
+#         level DEBUG
+#       }
+
+#       encode gzip zstd
+
+#       # Portfolio app - CORRECTED IP AND PORT
+#       reverse_proxy http://172.18.0.8:80
+
+#       header {
+#         -Server
+#         X-Content-Type-Options nosniff
+#         X-Frame-Options DENY
+#         Referrer-Policy "strict-origin-when-cross-origin"
+#       }
+#   }
+
+#   # Your existing config for port 80
+#   :80 {
+#       log {
+#         output stdout
+#         format console
+#         level DEBUG
+#       }
+
+#       encode gzip zstd
+
+#       @health path /health
+#       respond @health "OK" 200
+
+#       handle /api/* {
+#         reverse_proxy http://172.18.0.5:3005
+#       }
+
+#       handle {
+#         reverse_proxy http://172.18.0.5:3004
+#       }
+
+#       header {
+#         -Server
+#         X-Content-Type-Options nosniff
+#         X-Frame-Options DENY
+#         Referrer-Policy "strict-origin-when-cross-origin"
+#       }
 #   }
