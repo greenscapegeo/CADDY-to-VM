@@ -8,7 +8,7 @@
   env:
     VM_HOST:     ${{ secrets.VM_HOST }}
     VM_SSH_USER: ${{ secrets.VM_SSH_USER }}
-    VM_PATH:     "/home/borissolomonia/caddy"
+    VM_PATH:     "/home/greenscapegeo/caddy"
 
   jobs:
     deploy:

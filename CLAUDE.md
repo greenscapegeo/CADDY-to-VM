@@ -3,13 +3,14 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-This is a Caddy reverse proxy infrastructure configuration that routes traffic to multiple applications. The setup uses Docker Compose with automated deployment via GitHub Actions.
+This is a Caddy reverse proxy infrastructure configuration for Greenacape.ge that routes traffic to applications. The setup uses Docker Compose with automated deployment via GitHub Actions to VM 35.188.90.180.
 
 ## Architecture
 - **Main Config**: `caddy/Caddyfile` - Base Caddy configuration with health check, logging, and security headers
-- **App Routing**: `caddy/conf.d/apps.caddy` - Defines reverse proxy rules for applications:
-  - app1: Routes `/` and `/api/*` to ports 3000/3001
-  - app2: Routes `/app2/*` and `/app2/api/*` to ports 3000/3001 (with prefix stripping)
+- **App Routing**: Main domain `greenacape.ge` and fallback `:80` for HTTP traffic:
+  - Main app: Routes to your-app-name:80 for greenacape.ge
+  - API: Routes `/api/*` to your-backend-app:3000
+  - Frontend: Routes other traffic to your-frontend-app:3000
 - **Docker Setup**: `caddy/compose.yml` - Caddy service configuration with volume mounts
 - **Deployment**: `.github/workflows/deploy-caddy.yml` - Automated deployment to VM
 
@@ -31,9 +32,10 @@ docker run --rm -v ./caddy/Caddyfile:/etc/caddy/Caddyfile caddy:2 caddy validate
 ```
 
 ### Deployment
-- Push changes to `infra/caddy/**` on master branch triggers automatic deployment
+- Push changes to `caddy/**` on master branch triggers automatic deployment
 - Manual deployment: Use "Run workflow" in GitHub Actions
-- Target VM: Uses `VM_HOST`, `VM_SSH_USER` variables and `VM_SSH_KEY` secret
+- Target VM: 35.188.90.180 (greenscapegeo@instance-20250918-194008)
+- Uses `VM_HOST`, `VM_SSH_USER` variables and `VM_SSH_KEY` secret
 
 ## Network Configuration
 - External Docker network: `web` (must exist on deployment target)
