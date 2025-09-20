@@ -1,51 +1,42 @@
 greenacape.ge {
-  log {
-    output stdout
-    format console
-    level DEBUG
+    log {
+      output stdout
+      format console
+      level DEBUG
+    }
+
+    encode gzip zstd
+
+    reverse_proxy greenacape-frontend:80
+
+    header {
+      -Server
+      X-Content-Type-Options nosniff
+      X-Frame-Options DENY
+      Referrer-Policy "strict-origin-when-cross-origin"
+    }
   }
 
-  encode gzip zstd
+  :80 {
+    log {
+      output stdout
+      format console
+      level DEBUG
+    }
 
-  # Main application (update with your app container name and port)
-  reverse_proxy your-app-name:80
+    encode gzip zstd
 
-  header {
-    -Server
-    X-Content-Type-Options nosniff
-    X-Frame-Options DENY
-    Referrer-Policy "strict-origin-when-cross-origin"
+    @health path /health
+    respond @health "OK" 200
+
+    handle {
+      reverse_proxy greenacape-frontend:80
+    }
+
+    header {
+      -Server
+      X-Content-Type-Options nosniff
+      X-Frame-Options DENY
+      Referrer-Policy "strict-origin-when-cross-origin"
+    }
   }
-}
-
-:80 {
-  log {
-    output stdout
-    format console
-    level DEBUG
-  }
-
-  encode gzip zstd
-
-  @health path /health
-  respond @health "OK" 200
-
-  # API -> Backend (update with your backend container name and port)
-  handle /api/* {
-    reverse_proxy your-backend-app:3000
-  }
-
-  # UI -> Frontend (update with your frontend container name and port)
-  handle {
-    reverse_proxy your-frontend-app:3000
-  }
-
-  header {
-    -Server
-    X-Content-Type-Options nosniff
-    X-Frame-Options DENY
-    Referrer-Policy "strict-origin-when-cross-origin"
-  }
-}
-
-
