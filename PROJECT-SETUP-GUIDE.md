@@ -18,7 +18,7 @@ greenacape.ge → your-app-name:80          # Main application
 :80/*         → your-frontend-app:3000    # Frontend requests
 ```
 
-## Project Requirements
+## Project Requirements!
 
 ### 1. Docker Setup
 Your application must be containerized with Docker and use Docker Compose.
