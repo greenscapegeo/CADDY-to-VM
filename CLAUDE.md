@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview.
+## Project Overview
 This is a Caddy reverse proxy infrastructure configuration for Greenacape.ge that routes traffic to applications. The setup uses Docker Compose with automated deployment via GitHub Actions to VM 35.188.90.180.
 
 ## Architecture
