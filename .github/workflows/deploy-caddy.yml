@@ -16,6 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug SSH Connection
+        run: |
+          echo "Testing SSH connection..."
+          echo "Host: ${{ secrets.VM_HOST }}"
+          echo "User: ${{ secrets.VM_SSH_USER }}"
+          echo "Key length: ${#VM_SSH_KEY}"
+          echo "Key starts with: $(echo "${{ secrets.VM_SSH_KEY }}" | head -c 50)..."
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+
       - name: Copy Caddy files
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -26,6 +36,8 @@ jobs:
           target: "~/caddy"
           overwrite: true
           strip_components: 1
+          debug: true
+          timeout: 30s
 
       - name: Deploy Caddy
         uses: appleboy/ssh-action@v1.0.3
@@ -33,6 +45,8 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_SSH_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
+          debug: true
+          timeout: 30s
           script: |
             set -euo pipefail
             cd ~/caddy
