@@ -1,42 +1,75 @@
-greenacape.ge {
-    log {
-      output stdout
-      format console
-      level DEBUG
-    }
+{
+  # Don’t upgrade to HTTPS on the origin (Cloudflare Flexible)
+  auto_https off
+}
 
-    encode gzip zstd
-
-    reverse_proxy greenacape-frontend:80
-
-    header {
-      -Server
-      X-Content-Type-Options nosniff
-      X-Frame-Options DENY
-      Referrer-Policy "strict-origin-when-cross-origin"
-    }
+# Serve your domain(s) over plain HTTP
+http://greenscape.ge, http://www.greenscape.ge, http://35.188.90.180 {
+  log {
+    output stdout
+    format console
+    level DEBUG
   }
 
-  :80 {
-    log {
-      output stdout
-      format console
-      level DEBUG
-    }
+  encode gzip zstd
 
-    encode gzip zstd
+  # if it's a container reachable by this name, keep it
+  reverse_proxy greenacape-frontend:80
 
-    @health path /health
-    respond @health "OK" 200
-
-    handle {
-      reverse_proxy greenacape-frontend:80
-    }
-
-    header {
-      -Server
-      X-Content-Type-Options nosniff
-      X-Frame-Options DENY
-      Referrer-Policy "strict-origin-when-cross-origin"
-    }
+  header {
+    -Server
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy "strict-origin-when-cross-origin"
   }
+}
+
+# Optional: health check on the IP/host too
+:80 {
+  @health path /health
+  respond @health "OK" 200
+}
+
+
+# greenscape.ge {
+#     log {
+#       output stdout
+#       format console
+#       level DEBUG
+#     }
+
+#     encode gzip zstd
+
+#     reverse_proxy greenacape-frontend:80
+
+#     header {
+#       -Server
+#       X-Content-Type-Options nosniff
+#       X-Frame-Options DENY
+#       Referrer-Policy "strict-origin-when-cross-origin"
+#     }
+#   }
+
+#   :80 {
+#     log {
+#       output stdout
+#       format console
+#       level DEBUG
+#     }
+
+#     encode gzip zstd
+
+#     @health path /health
+#     respond @health "OK" 200
+
+#     handle {
+#       reverse_proxy greenacape-frontend:80
+#     }
+
+#     header {
+#       -Server
+#       X-Content-Type-Options nosniff
+#       X-Frame-Options DENY
+#       Referrer-Policy "strict-origin-when-cross-origin"
+#     }
+#   }
